@@ -9,8 +9,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.mock;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class) // @Mock 어노테이션 처리를 위해 필요.  FindSlowTestExtension 처럼 Extension 만든것
 class StudyServiceTest {
@@ -41,6 +42,11 @@ class StudyServiceTest {
             public Optional<Member> findById(Long memberId) {
                 return Optional.empty();
             }
+
+            @Override
+            public void validate(Long memberId) {
+
+            }
         };
 
         // 위와 같은 작업을 Mockito가 대신 해줌
@@ -68,5 +74,55 @@ class StudyServiceTest {
         StudyService studyService = new StudyService(memberService, studyRepository);
         assertNotNull(studyService); // null이면 error
     }
+
+    /**
+     * stubbing 예제
+     * @param memberService
+     * @param studyRepository
+     */
+    @Test
+    void createNewStudy(@Mock MemberService memberService,
+                        @Mock StudyRepository studyRepository) {
+
+        StudyService studyService = new StudyService(memberService, studyRepository);
+        assertNotNull(studyService);
+
+        Member member = new Member();
+        member.setId(1L);
+        member.setEmail("keesun@email.com");
+
+        // 1. 모키토 기본 스터빙은 아래 처럼 진행
+        when(memberService.findById(1L)) // memberService.findById(any()) 가 호출이 되면.
+                .thenReturn(Optional.of(member));  // Optional.of(member)를 리턴 해라
+        Optional<Member> memberOptional = memberService.findById(1L);
+        assertEquals("keesun@email.com", memberOptional.get().getEmail());
+
+        // 2. void method 호출시 예외 던지는 스터빙
+        // 모키토 문서 Stubbing void methods with exceptions 에서 보면 void method는 특수하게도 예외 스터빙은 아래처럼 해야함
+        doThrow(new IllegalArgumentException()).when(memberService).validate(1L);
+        assertThrows(RuntimeException.class, () -> {
+            memberService.validate(1L);
+        });
+
+
+
+        // 3. 메소드가 동일한 매개변수로 여러번 호출될 때 각기 다르게 행동호도록 조작할 수도 있다.
+        // Stubbing consecutive calls
+        when(memberService.findById(any()))
+                .thenReturn(Optional.of(member)) //  findById 첫번째 호출시
+                .thenThrow(new RuntimeException()) //  findById 두번째 호출시
+                .thenReturn(Optional.empty()); // findById 세번쨰 호출시
+
+
+        Optional<Member> byId = memberService.findById(1L); // findById 첫번째 호출시
+        assertEquals("keesun@email.com", byId.get().getEmail());
+
+        assertThrows(RuntimeException.class, () -> {
+            memberService.findById(2L); //  findById 두번째 호출시
+        });
+
+        assertEquals(Optional.empty(), memberService.findById(3L)); // findById 세번쨰 호출시
+    }
+
 
 }
