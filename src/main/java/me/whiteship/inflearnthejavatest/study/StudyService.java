@@ -4,6 +4,8 @@ import me.whiteship.inflearnthejavatest.domain.Member;
 import me.whiteship.inflearnthejavatest.domain.Study;
 import me.whiteship.inflearnthejavatest.member.MemberService;
 
+import java.util.Optional;
+
 public class StudyService {
 
     private final MemberService memberService;
@@ -16,11 +18,10 @@ public class StudyService {
     }
 
     public Study createNewStudy(Long memberId, Study study) {
-        Member member = memberService.findById(memberId);
-        if (member == null) {
-            throw new IllegalArgumentException("Member doesn't exist for id: '" + memberId + "'");
-        }
-        study.setOwner(member);
+        Optional<Member> member = memberService.findById(memberId);
+
+        // optional로 member null 비교문을 하나 줄였음
+        study.setOwner(member.orElseThrow(()-> new IllegalArgumentException("Member does not exist")));
         return repository.save(study);
     }
 
