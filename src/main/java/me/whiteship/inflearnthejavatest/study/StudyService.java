@@ -13,6 +13,9 @@ public class StudyService {
     private final StudyRepository repository;
 
     public StudyService(MemberService memberService, StudyRepository repository) {
+        // assert 키워드 아래 상황에서 쓰면 좋을듯
+        assert memberService != null;
+        assert repository != null;
         this.memberService = memberService;
         this.repository = repository;
     }
