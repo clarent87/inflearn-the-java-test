@@ -5,6 +5,7 @@ import me.whiteship.inflearnthejavatest.domain.Study;
 import me.whiteship.inflearnthejavatest.member.MemberService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.BDDMockito;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -13,6 +14,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class) // @Mock 어노테이션 처리를 위해 필요.  FindSlowTestExtension 처럼 Extension 만든것
@@ -89,6 +92,7 @@ class StudyServiceTest {
 
     /**
      * stubbing 예제
+     *
      * @param memberService
      * @param studyRepository
      */
@@ -115,7 +119,6 @@ class StudyServiceTest {
         assertThrows(RuntimeException.class, () -> {
             memberService.validate(1L);
         });
-
 
 
         // 3. 메소드가 동일한 매개변수로 여러번 호출될 때 각기 다르게 행동호도록 조작할 수도 있다.
@@ -172,8 +175,45 @@ class StudyServiceTest {
 
         verifyNoInteractions(memberService); // 이거 호출된 이후로 더이상 memberService mock에 상호작용이 있어서는 안된다.
 
-
     }
 
+    // BDD를 따르려면 test 이름도 should~~ 로 되어야함. (https://matheus.ro/2017/09/24/unit-test-naming-convention/)
+    // 근데 그냥 display name만 잘 써줘도 될거 같다함.
+    @Test
+    void createNewStudyBDD() {
+        //Givne
+        StudyService studyService = new StudyService(memberService, studyRepository);
+        assertNotNull(studyService);
 
+        Member member = new Member();
+        member.setId(1L);
+        member.setEmail("keesun@email.com");
+
+        Study study = new Study(10, "테스트");
+
+        // stubbing하는 부분은 BDD에 따르면 given에 해당하는데,, api이름이 맞지 않다..
+        // 그래서 BDD Mockito을 이용
+//        when(memberService.findById(1L)).thenReturn(Optional.of(member));
+//        when(studyRepository.save(study)).thenReturn(study);
+
+        // 위 코드를 아래처럼 바꿀수 있다. (BDDMockito package 이용)
+        given(memberService.findById(1L)).willReturn(Optional.of(member));
+        given(studyRepository.save(study)).willReturn(study);
+
+        //When
+        studyService.createNewStudy(1L, study);
+
+        //Then
+        assertEquals(member, study.getOwner()); // 쥬피터꺼
+
+        // 아래도 BDD style은 아님.. 그래서 BDDMockito 의 API로 변경하면..
+//        verify(memberService, times(1)).notify(study);
+        // 이게 BDD 스타일. should 안에는 아무것도 안넣을 수도 있음
+        then(memberService).should( times(1)).notify(study);
+
+        // 이것도 BDD로 변경해보면
+//        verifyNoInteractions(memberService);
+        then(memberService).shouldHaveNoMoreInteractions();
+
+    }
 }
