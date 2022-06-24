@@ -1,9 +1,11 @@
 package me.whiteship.inflearnthejavatest.study;
 
 import me.whiteship.inflearnthejavatest.domain.Member;
+import me.whiteship.inflearnthejavatest.domain.Study;
 import me.whiteship.inflearnthejavatest.member.MemberService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -45,6 +47,16 @@ class StudyServiceTest {
 
             @Override
             public void validate(Long memberId) {
+
+            }
+
+            @Override
+            public void notify(Study newstudy) {
+
+            }
+
+            @Override
+            public void notify(Member member) {
 
             }
         };
@@ -122,6 +134,45 @@ class StudyServiceTest {
         });
 
         assertEquals(Optional.empty(), memberService.findById(3L)); // findById 세번쨰 호출시
+    }
+
+    @Test
+    void createNewStudyQuiz() {
+
+        StudyService studyService = new StudyService(memberService, studyRepository);
+        assertNotNull(studyService);
+
+        Member member = new Member();
+        member.setId(1L);
+        member.setEmail("keesun@email.com");
+
+        Study study = new Study(10, "테스트");
+
+        when(memberService.findById(1L)).thenReturn(Optional.of(member));
+        when(studyRepository.save(study)).thenReturn(study);
+
+        studyService.createNewStudy(1L, study);
+        assertEquals(member, study.getOwner());
+
+        //  studyService.createNewStudy 호출시 내부적을
+        //  memberService.notify(newstudy); 가 호출되는데, 이게 호출이 잘 됬는지 알길이 없음
+        //  memberService 는 mocking했고..
+        //  이럴때 아래와 같은 verify를 써서 mock의 동작을 확인 가능 ( matcher사용 가능 )
+        // 특정 시간안에 호출이 되야하는 게 있는경우 mockito의 timeout을 쓸수 있는데, 이럴 바에는 junit timeout을 쓰는게 낫다
+        verify(memberService, times(1)).notify(study); // notify가 1번 study 매개변수로 호출됬어야 한다.
+        verify(memberService, times(1)).notify(member);
+        verify(memberService, never()).validate(any()); // validate 는 한번도 호출되지 않았어야한다.
+
+        // 만약 notify 함수가 study로 한번 member로 한번 순서대로 호출되었는지 검증하려면?
+        // 이건 쫌 너무한 test 같다고는함. ( 순서까지 확인하는거.. )
+        // > 위쪽에서 verify한건 호출된 횟수 파악.하는거고 순서 확인에 영향을 주지는 않네.
+        InOrder inOrder = inOrder(memberService);
+        inOrder.verify(memberService).notify(study); // study로 먼저 호출되고
+        inOrder.verify(memberService).notify(member);// member로 호출되어야한다.
+
+        verifyNoInteractions(memberService); // 이거 호출된 이후로 더이상 memberService mock에 상호작용이 있어서는 안된다.
+
+
     }
 
 
